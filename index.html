@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lunsjnnnnnnnnskeliste</title>
+    <title>Lunsjskeliste</title>
     <style>
         * {
             margin: 0;
@@ -230,7 +230,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Lunsjnnnnnnnnskeliste</h1>
+        <h1>Lunsjskeliste</h1>
         <div id="message"></div>
 
         <div class="form-section">
@@ -238,7 +238,7 @@
                 <input 
                     type="text" 
                     id="foodInput" 
-                    placeholder="Foresl en matvare..." 
+                    placeholder="Foreslå en matvare..." 
                     autocomplete="off"
                 >
                 <button onclick="addSuggestion()">Legg til</button>
@@ -279,7 +279,7 @@
             const container = document.getElementById('suggestions');
             
             if (suggestions.length === 0) {
-                container.innerHTML = '<div class="empty-state">Ingen forslag enn. Vr den frrrrrrrrste til å foresl noe!</div>';
+                container.innerHTML = '<div class="empty-state">Ingen forslag ennå. Vær den første til å foreslå noe!</div>';
                 return;
             }
 
