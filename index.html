@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunsjønskeliste</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; color: white; margin-bottom: 30px; font-size: 2.5em; }
+        .form-section { background: white; padding: 25px; border-radius: 12px; margin-bottom: 30px; }
+        .form-group { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+        button { padding: 12px 25px; background: #667eea; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        button:hover { background: #5568d3; }
+        .suggestions { display: flex; flex-direction: column; gap: 15px; }
+        .suggestion { background: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .suggestion.top-1 { background: linear-gradient(135deg, #ffd700, #ffed4e); border: 2px solid #ffa500; }
+        .suggestion.top-2 { background: linear-gradient(135deg, #c0c0c0, #e8e8e8); }
+        .suggestion.top-3 { background: linear-gradient(135deg, #cd7f32, #d4a574); }
+        .vote-btn { padding: 8px 15px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .vote-btn.voted { background: #888; opacity: 0.6; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍽️ Lunsjønskeliste</h1>
+        <div id="message"></div>
+        <div class="form-section">
+            <div class="form-group">
+                <input type="text" id="foodInput" placeholder="Foreslå en matvare..." autocomplete="off">
+                <button onclick="addFood()">Legg til</button>
+            </div>
+        </div>
+        <div id="suggestions" class="suggestions">
+            <div style="color: white; text-align: center; padding: 40px;">Laster...</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const db = window.supabase.createClient("https://cstcniiidjrcdnkaodym.supabase.co", "sb_publishable_qQmG0CsjmMRNZ4HduPJBKQ_Q9cZOoi2");
+        let all = [];
+
+        async function load() {
+            const { data } = await db.from('lunch_suggestions').select('*').order('votes', { ascending: false });
+            all = data || [];
+            render();
+        }
+
+        function render() {
+            const el = document.getElementById('suggestions');
+            if (!all.length) { el.innerHTML = '<div style="color: white; text-align: center; padding: 40px;">Ingen forslag ennå</div>'; return; }
+            el.innerHTML = all.map((s, i) => {
+                const voted = localStorage.getItem(`v${s.id}`) === '1';
+                let cls = '', medal = '';
+                if (i === 0) { cls = 'top-1'; medal = '🥇'; } 
+                else if (i === 1) { cls = 'top-2'; medal = '🥈'; } 
+                else if (i === 2) { cls = 'top-3'; medal = '🥉'; }
+                return `<div class="suggestion ${cls}"><div>${medal} ${s.name}</div><div>${s.votes} <button class="vote-btn ${voted?'voted':''}" onclick="vote('${s.id}')" ${voted?'disabled':''}>${voted?'✓':'👍'}</button></div></div>`;
+            }).join('');
+        }
+
+        async function addFood() {
+            const val = document.getElementById('foodInput').value.trim();
+            if (!val) return;
+            await db.from('lunch_suggestions').insert({ name: val, votes: 0 });
+            document.getElementById('foodInput').value = '';
+            await load();
+        }
+
+        async function vote(id) {
+            if (localStorage.getItem(`v${id}`) === '1') return;
+            const s = all.find(x => x.id === id);
+            await db.from('lunch_suggestions').update({ votes: s.votes + 1 }).eq('id', id);
+            localStorage.setItem(`v${id}`, '1');
+            await load();
+        }
+
+        load();
+        setInterval(load, 5000);
+        document.getElementById('foodInput').addEventListener('keypress', e => { if (e.key === 'Enter') addFood(); });
+    </script>
+</body>
+</html>
