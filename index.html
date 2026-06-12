@@ -330,7 +330,7 @@
             try {
                 const { data, error } = await supabase
                     .from('lunch_suggestions')
-                    .insert({ name: food, votes: 0 }).select(
+                    .insert({ name: food, votes: 0 })
                     .select();
 
                 if (error) throw error;
