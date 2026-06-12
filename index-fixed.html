@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunsjønskeliste</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; color: white; margin-bottom: 30px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .form-section { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }
+        .form-group { display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+        input[type="text"]:focus { outline: none; border-color: #667eea; }
+        button { padding: 12px 25px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        button:hover { background: #5568d3; transform: translateY(-2px); }
+        .suggestions-section { display: flex; flex-direction: column; gap: 15px; }
+        .suggestion { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; position: relative; }
+        .suggestion.top-1 { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); border: 2px solid #ffa500; transform: scale(1.02); box-shadow: 0 8px 25px rgba(255, 165, 0, 0.3); }
+        .suggestion.top-2 { background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%); border: 2px solid #888; transform: scale(1.01); }
+        .suggestion.top-3 { background: linear-gradient(135deg, #cd7f32 0%, #d4a574 100%); border: 2px solid #8b4513; }
+        .medal { position: absolute; top: -12px; left: -12px; font-size: 2.5em; }
+        .suggestion-name { font-size: 18px; font-weight: 600; flex: 1; padding-left: 35px; color: #333; }
+        .suggestion.top-1 .suggestion-name, .suggestion.top-2 .suggestion-name, .suggestion.top-3 .suggestion-name { color: #000; }
+        .vote-section { display: flex; align-items: center; gap: 12px; }
+        .vote-count { font-size: 24px; font-weight: 700; color: #667eea; min-width: 35px; text-align: center; }
+        .suggestion.top-1 .vote-count, .suggestion.top-2 .vote-count, .suggestion.top-3 .vote-count { color: #333; }
+        .vote-btn { padding: 10px 15px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 80px; }
+        .vote-btn:hover { background: #5568d3; }
+        .vote-btn.voted { background: #888; opacity: 0.6; cursor: not-allowed; }
+        .error { background: #ff6b6b; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .success { background: #51cf66; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍽️ Lunsjønskeliste</h1>
+        <div id="message"></div>
+        <div class="form-section">
+            <div class="form-group">
+                <input type="text" id="foodInput" placeholder="Foreslå en matvare..." autocomplete="off">
+                <button onclick="addSuggestion()">Legg til</button>
+            </div>
+        </div>
+        <div id="suggestions" class="suggestions-section">
+            <div style="text-align: center; color: white; padding: 40px;">Laster...</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const PROJECT_URL = "https://cstcniiidjrcdnkaodym.supabase.co";
+        const ANON_KEY = "sb_publishable_qQmG0CsjmMRNZ4HduPJBKQ_Q9cZOoi2";
+        const supabase = window.supabase.createClient(PROJECT_URL, ANON_KEY);
+        let suggestions = [];
+
+        async function loadSuggestions() {
+            try {
+                const { data, error } = await supabase.from('lunch_suggestions').select('*').order('votes', { ascending: false });
+                if (error) throw error;
+                suggestions = data || [];
+                renderSuggestions();
+            } catch (err) {
+                document.getElementById('suggestions').innerHTML = '<div style="color: white; text-align: center; padding: 40px;">Feil: ' + err.message + '</div>';
+            }
+        }
+
+        function renderSuggestions() {
+            const container = document.getElementById('suggestions');
+            if (suggestions.length === 0) {
+                container.innerHTML = '<div style="color: white; text-align: center; padding: 40px;">Ingen forslag ennå. Vær den første til å foreslå!</div>';
+                return;
+            }
+            container.innerHTML = suggestions.map((s, index) => {
+                const hasVoted = localStorage.getItem(`vote_${s.id}`) === 'true';
+                let topClass = '';
+                let medal = '';
+                if (index === 0) { topClass = 'top-1'; medal = '🥇'; }
+                else if (index === 1) { topClass = 'top-2'; medal = '🥈'; }
+                else if (index === 2) { topClass = 'top-3'; medal = '🥉'; }
+                return `<div class="suggestion ${topClass}">
+                    ${medal ? `<span class="medal">${medal}</span>` : ''}
+                    <div class="suggestion-name">${s.name}</div>
+                    <div class="vote-section">
+                        <div class="vote-count">${s.votes}</div>
+                        <button class="vote-btn ${hasVoted ? 'voted' : ''}" onclick="vote('${s.id}')" ${hasVoted ? 'disabled' : ''}>
+                            ${hasVoted ? '✓ Stemt' : '👍 Stem'}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function addSuggestion() {
+            const input = document.getElementById('foodInput');
+            const food = input.value.trim();
+            if (!food) { showMessage('Skriv inn en matvare', 'error'); return; }
+            try {
+                const { error } = await supabase.from('lunch_suggestions').insert({ name: food, votes: 0 }).select();
+                if (error) throw error;
+                input.value = '';
+                showMessage('Forslag lagt til!', 'success');
+                await loadSuggestions();
+            } catch (err) {
+                showMessage('Feil: ' + err.message, 'error');
+            }
+        }
+
+        async function vote(id) {
+            if (localStorage.getItem(`vote_${id}`) === 'true') { showMessage('Du har allerede stemt!', 'error'); return; }
+            try {
+                const s = suggestions.find(x => x.id === id);
+                const { error } = await supabase.from('lunch_suggestions').update({ votes: s.votes + 1 }).eq('id', id);
+                if (error) throw error;
+                localStorage.setItem(`vote_${id}`, 'true');
+                await loadSuggestions();
+                showMessage('Takk for stemmen!', 'success');
+            } catch (err) {
+                showMessage('Feil: ' + err.message, 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = type;
+            setTimeout(() => { msg.textContent = ''; msg.className = ''; }, 3000);
+        }
+
+        loadSuggestions();
+        setInterval(loadSuggestions, 5000);
+        document.getElementById('foodInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') addSuggestion(); });
+    </script>
+</body>
+</html>
